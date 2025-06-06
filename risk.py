@@ -14,14 +14,14 @@ from typing import Optional
 
 @dataclass
 class MertonConfig:
-    S0: float = 100.0       # Spot price
-    K: float = 100.0        # Strike price
-    T: float = 1.0          # Time to maturity (years)
-    r: float = 0.05         # Risk-free rate
-    sigma: float = 0.2      # Diffusion volatility
-    lamb: float = 0.5       # Jump intensity
-    mu_j: float = -0.05     # Mean jump size (log)
-    sigma_j: float = 0.2    # Jump volatility
+    S0: float = .9       # Spot price
+    K: float = .95        # Strike price
+    T: float = 0.5342465753 # Time to maturity (years)
+    r: float = 0.04351         # Risk-free rate
+    sigma: float = 0.3      # Diffusion volatility
+    lamb: float = 0.8       # Jump intensity
+    mu_j: float = -0.1     # Mean jump size (log)
+    sigma_j: float = 0.3    # Jump volatility
 
 class MertonModel:
     """Complete Merton Jump-Diffusion implementation with risk metrics"""
