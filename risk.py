@@ -14,14 +14,14 @@ from typing import Optional
 
 @dataclass
 class MertonConfig:
-    S0: float = .9       # Spot price
+    S0: float = .955       # Spot price
     K: float = .95        # Strike price
-    T: float = 0.5342465753 # Time to maturity (years)
-    r: float = 0.04351         # Risk-free rate
-    sigma: float = 0.3      # Diffusion volatility
-    lamb: float = 0.8       # Jump intensity
-    mu_j: float = -0.1     # Mean jump size (log)
-    sigma_j: float = 0.3    # Jump volatility
+    T: float = 0.5042465753 # Time to maturity (years)
+    r: float = 4.311    # Risk-free rate
+    sigma: float = 67.75      # Diffusion volatility
+    lamb: float = 500       # Jump intensity
+    mu_j: float = .00200     # Mean jump size (log)
+    sigma_j: float = 100    # Jump volatility
 
 class MertonModel:
     """Complete Merton Jump-Diffusion implementation with risk metrics"""
@@ -109,7 +109,7 @@ class MertonModel:
     # ======================
     # Risk Metrics
     # ======================
-    def value_at_risk(self, position_size=1_000_000, time_horizon=1/252, alpha=0.05, n_simulations=100_000):     #requires size input
+    def value_at_risk(self, position_size=4_500_000, time_horizon=1/252, alpha=0.05, n_simulations=9_100_000):     #requires size input
         """Compute VaR using full Merton dynamics"""
         dt = time_horizon
         Z = np.random.normal(0, 1, n_simulations)
@@ -124,7 +124,7 @@ class MertonModel:
         pnl = position_size * returns
         return -np.percentile(pnl, alpha * 100)
 
-    def expected_shortfall(self, position_size=1_000_000, time_horizon=1/252, alpha=0.05, n_simulations=100_000):        #requires size input
+    def expected_shortfall(self, position_size=4_500_000, time_horizon=1/252, alpha=0.05, n_simulations=80_000_000):        #requires size input
         """Compute ES (CVaR) - average loss beyond VaR"""
         var = self.value_at_risk(position_size, time_horizon, alpha, n_simulations)
         dt = time_horizon
@@ -142,7 +142,7 @@ class MertonModel:
         pnl = position_size * returns
         return -np.mean(pnl[pnl <= -var])
 
-    def jump_risk_impact(self, position_size=1_000_000, time_horizon=1/252, alpha=0.05):
+    def jump_risk_impact(self, position_size=4_500_000, time_horizon=1/252, alpha=0.05):
         """Quantify how jumps affect risk metrics"""
         original_lamb = self.c.lamb
         
@@ -169,12 +169,11 @@ if __name__ == "__main__":
     model = MertonModel(config)
     
     print("=== Option Pricing ===")
-    print(f"European Call: {model.european_call():.2f}")
-    print(f"American Call: {model.american_call():.2f}")
+    print(f"American Call: {model.american_call()*1.19245283019:.2f}")
     
     print("\n=== Risk Metrics ===")
-    var = model.value_at_risk(position_size=1_000_000, time_horizon=1/252, alpha=0.05)
-    es = model.expected_shortfall(position_size=1_000_000, time_horizon=1/252, alpha=0.05)
+    var = model.value_at_risk(position_size=4_500_000, time_horizon=1/252, alpha=0.05)
+    es = model.expected_shortfall(position_size=4_500_000, time_horizon=1/252, alpha=0.05)
     print(f"1-day 95% VaR: ${var:,.2f}")
     print(f"1-day 95% ES: ${es:,.2f}")
     
