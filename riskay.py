@@ -7,21 +7,25 @@ from typing import Dict
 import seaborn as sns
 import os
 
+# Configure matplotlib for non-interactive backend
 plt.switch_backend('Agg')
 
 @dataclass
 class MertonConfig:
-    S0: float = .960
-    K: float = .950
-    T: float = .51320
-    r: float = 0.04311
-    sigma: float = 0.6775
-    lamb: float = 5.0
-    mu_j: float = -0.10
-    sigma_j: float = 0.3
-    jump_impact_factor: float = 1.5
+    """Configuration for Merton Jump-Diffusion Model"""
+    S0: float = .960          # Spot price
+    K: float = .950           # Strike price
+    T: float = .51320             # Time to maturity (years)
+    r: float = 0.04311           # Risk-free rate
+    sigma: float = 0.6775         # Diffusion volatility
+    lamb: float = 5.0          # Jump intensity
+    mu_j: float = -0.10        # Mean jump size (log)
+    sigma_j: float = 0.3       # Jump volatility
+    jump_impact_factor: float = 1.5  # Multiplier to amplify jumps
 
 class MertonJumpModel:
+    """Merton model with visualization saving for Codespaces"""
+    
     def __init__(self, config: MertonConfig):
         self.c = config
         self._validate()
@@ -30,23 +34,27 @@ class MertonJumpModel:
         os.makedirs(self.output_dir, exist_ok=True)
         
     def _validate(self):
+        """Parameter validation"""
         if not all(v > 0 for v in [self.c.S0, self.c.K, self.c.T]):
             raise ValueError("S0, K, T must be positive")
         if not all(v >= 0 for v in [self.c.sigma, self.c.lamb, self.c.sigma_j]):
             raise ValueError("Volatilities and lambda must be non-negative")
     
     def _setup_style(self):
+        """Configure visualization style"""
         sns.set(style='whitegrid')
         plt.rcParams['figure.figsize'] = [12, 6]
         plt.rcParams['font.size'] = 12
     
     def _save_plot(self, fig, filename: str) -> str:
+        """Save plot to file and return path"""
         path = os.path.join(self.output_dir, filename)
         fig.savefig(path, bbox_inches='tight')
         plt.close(fig)
         return path
     
     def simulate_paths(self, n_paths: int = 1000, n_steps: int = 252) -> np.ndarray:
+        """Generate asset paths with jumps"""
         dt = self.c.T / n_steps
         paths = np.zeros((n_paths, n_steps + 1))
         paths[:, 0] = self.c.S0
@@ -74,6 +82,7 @@ class MertonJumpModel:
         return paths
     
     def plot_paths_with_jumps(self, n_paths: int = 5, n_steps: int = 252) -> str:
+        """Visualize paths with jumps and save to file"""
         paths = self.simulate_paths(n_paths, n_steps)
         fig, ax = plt.subplots(figsize=(14, 7))
         
@@ -88,7 +97,8 @@ class MertonJumpModel:
                          s=100, edgecolors='black', zorder=10,
                          label=f'Path {i+1} jumps (n={len(jump_points)})')
         
-        ax.set_title(f'Merton Jump-Diffusion Paths\nλ={self.c.lamb:.1f}, μ_j={self.c.mu_j:.2f}, σ_j={self.c.sigma_j:.2f}')
+        ax.set_title(f'Merton Jump-Diffusion Paths\n'
+                   f'λ={self.c.lamb:.1f}, μ_j={self.c.mu_j:.2f}, σ_j={self.c.sigma_j:.2f}')
         ax.set_xlabel('Time Steps')
         ax.set_ylabel('Asset Price')
         ax.legend()
@@ -97,6 +107,7 @@ class MertonJumpModel:
         return self._save_plot(fig, 'jump_paths.png')
     
     def plot_jump_size_distribution(self, n_simulations: int = 10000) -> str:
+        """Visualize jump size distribution and save to file"""
         jump_sizes = np.exp(self.c.mu_j + self.c.sigma_j * np.random.normal(0, 1, n_simulations))
         
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -113,6 +124,7 @@ class MertonJumpModel:
     def calculate_var_es(self, position_size: float = 4_500_000,
                         time_horizon: float = 1/252, alpha: float = 0.05,
                         n_simulations: int = 100_000) -> Dict[str, float]:
+        """Compute Value-at-Risk and Expected Shortfall"""
         dt = time_horizon
         Z = np.random.normal(0, 1, n_simulations)
         diffusion = (self.c.r - 0.5*self.c.sigma**2 - 
@@ -145,6 +157,7 @@ class MertonJumpModel:
         }
     
     def jump_scenario_analysis(self, position_size: float = 4_500_000) -> Dict[str, Dict]:
+        """Compare risk metrics across jump scenarios"""
         scenarios = {
             'Current': {},
             'No_Jumps': {'lamb': 0},
@@ -171,18 +184,21 @@ class MertonJumpModel:
 if __name__ == "__main__":
     print("=== Merton Jump-Diffusion Model ===")
     
+    # Create model with impactful parameters
     config = MertonConfig(
         S0=100.0, K=100.0, T=1.0, r=0.05, sigma=0.2,
         lamb=5.0, mu_j=-0.10, sigma_j=0.3, jump_impact_factor=1.5
     )
     model = MertonJumpModel(config)
     
+    # Generate and save visualizations
     paths_plot_path = model.plot_paths_with_jumps()
     jump_dist_path = model.plot_jump_size_distribution()
     
     print(f"Saved path visualization to: {paths_plot_path}")
     print(f"Saved jump distribution to: {jump_dist_path}\n")
     
+    # Risk analysis
     risk_metrics = model.calculate_var_es(position_size=1_000_000)
     print("1-Day 95% Risk Metrics:")
     for metric, value in risk_metrics.items():
@@ -190,6 +206,7 @@ if __name__ == "__main__":
               f"{metric.replace('_', ' '):<25}: {value:.2%}" if 'Probability' in metric else
               f"{metric.replace('_', ' '):<25}: {value:.4f}")
     
+    # Scenario analysis
     print("\nRunning jump scenario analysis")
     scenarios = model.jump_scenario_analysis()
     
@@ -198,4 +215,3 @@ if __name__ == "__main__":
     for name, data in scenarios.items():
         print(f"{name:<20} ${data['Value_at_Risk']:>11,.2f} ${data['Expected_Shortfall']:>11,.2f} "
               f"{data['Jump_Probability']:>11.2%} {data['Average_Jump_Impact']:>11.4f}")
-```
